@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Real-time QR Code Generator & Decoder</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code generation library (Updated for styling) -->
+    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <!-- QR Code decoding library -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        /* Custom styles for better aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #qrcode-container {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden; /* Ensures canvas stays within rounded borders */
+        }
+        #qrcode-container canvas {
+            display: block;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .color-well {
+            display: inline-block;
+            width: 100%;
+            height: 48px;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .color-well::-webkit-color-swatch {
+            border-radius: 0.25rem;
+            border: none;
+        }
+        .color-well::-moz-color-swatch {
+            border-radius: 0.25rem;
+            border: none;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl bg-white p-8 rounded-2xl shadow-xl">
+        <!-- Header Section -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">QR Code Generator</h1>
+            <p class="text-slate-500 mb-8">Create and customize your QR code, or upload an image to decode it.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 md:gap-8">
+
+            <!-- Left Panel: Controls -->
+            <div class="w-full flex flex-col space-y-8">
+                <!-- Decode Section -->
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-2 text-left">Decode a QR Code</h2>
+                    <input type="file" id="qr-upload" accept="image/*" class="hidden">
+                    <label for="qr-upload" class="w-full inline-block bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg cursor-pointer hover:bg-indigo-700 transition duration-300 text-center">
+                        Upload & Decode
+                    </label>
+                    <p id="decode-result" class="text-sm text-red-500 mt-3 h-4 text-left"></p>
+                </div>
+
+                <!-- Input Field -->
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-2 text-left">Your Text</h2>
+                     <textarea id="text-input"
+                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-300"
+                           placeholder="Type something here..." rows="8"></textarea>
+                </div>
+            </div>
+
+            <!-- Center Panel: Customization -->
+            <div class="w-full flex flex-col space-y-6 mt-8 md:mt-0">
+                <h2 class="text-xl font-bold text-slate-800 text-left">Customization</h2>
+                <!-- Color Picker -->
+                <div>
+                    <label for="color-picker" class="block text-sm font-medium text-slate-600 mb-2">QR Code Color</label>
+                    <input type="color" id="color-picker" value="#000000" class="color-well">
+                </div>
+                <!-- Block Style -->
+                <div>
+                     <label for="dot-style" class="block text-sm font-medium text-slate-600 mb-2">Block Style</label>
+                     <select id="dot-style" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <option value="square">Square</option>
+                        <option value="rounded">Rounded</option>
+                        <option value="dots">Dots</option>
+                        <option value="classy">Classy</option>
+                        <option value="classy-rounded">Classy Rounded</option>
+                        <option value="extra-rounded">Extra Rounded</option>
+                     </select>
+                </div>
+                <!-- Center Image -->
+                <div>
+                    <label for="center-image" class="block text-sm font-medium text-slate-600 mb-2">Center Image</label>
+                    <input type="file" id="center-image" accept="image/*" class="hidden">
+                    <div class="flex space-x-2">
+                        <label for="center-image" class="w-full inline-block bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg cursor-pointer hover:bg-slate-300 transition duration-300 text-center text-sm">
+                            Upload
+                        </label>
+                        <button id="remove-image" class="w-full bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition duration-300 text-center text-sm">Remove</button>
+                    </div>
+                </div>
+                 <!-- Image Size -->
+                <div>
+                    <label for="image-size" class="block text-sm font-medium text-slate-600 mb-2">Image Size</label>
+                    <input id="image-size" type="range" min="0.1" max="0.7" value="0.4" step="0.05" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Right Panel: Preview -->
+            <div class="w-full mt-8 md:mt-0 flex flex-col items-center justify-start bg-slate-50 p-6 rounded-lg">
+                <!-- QR Code Preview Area -->
+                <div id="qrcode-container">
+                    <div id="qrcode"></div>
+                </div>
+                 <div id="placeholder" class="hidden flex items-center justify-center w-full h-full">
+                    <p class="text-slate-400 text-center">Your QR code will appear here</p>
+                </div>
+
+                <!-- Size Control Slider -->
+                <div class="mt-6 w-full max-w-xs">
+                    <label for="size-slider" class="block text-sm font-medium text-slate-600 mb-2 text-left">Adjust Size</label>
+                    <div class="flex items-center space-x-4">
+                        <input id="size-slider" type="range" min="128" max="400" value="256" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        <span id="size-value" class="text-sm text-slate-500 font-mono w-16 text-right">256px</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button Section -->
+        <div class="mt-8 pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <select id="file-type" class="w-full sm:w-auto px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="svg">SVG</option>
+            </select>
+            <button id="save-btn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-8 rounded-lg cursor-pointer hover:bg-green-700 transition duration-300">
+                Save QR Code
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Hidden canvas for decoding -->
+    <canvas id="decode-canvas" style="display: none;"></canvas>
+
+    <script>
+        // --- ELEMENT REFERENCES ---
+        const textInput = document.getElementById('text-input');
+        const qrcodeContainer = document.getElementById('qrcode');
+        const placeholder = document.getElementById('placeholder');
+        const sizeSlider = document.getElementById('size-slider');
+        const sizeValue = document.getElementById('size-value');
+        const qrUpload = document.getElementById('qr-upload');
+        const decodeResult = document.getElementById('decode-result');
+        const decodeCanvas = document.getElementById('decode-canvas');
+        const ctx = decodeCanvas.getContext('2d', { willReadFrequently: true });
+        // Customization elements
+        const colorPicker = document.getElementById('color-picker');
+        const dotStyleSelect = document.getElementById('dot-style');
+        const centerImageInput = document.getElementById('center-image');
+        const removeImageBtn = document.getElementById('remove-image');
+        const imageSizeSlider = document.getElementById('image-size');
+        const saveBtn = document.getElementById('save-btn');
+        const fileTypeSelect = document.getElementById('file-type');
+        
+        let centerImage = '';
+
+        // --- QR CODE STYLING INSTANCE ---
+        const qrCode = new QRCodeStyling({
+            width: 256,
+            height: 256,
+            type: 'svg',
+            data: "https://gemini.google.com/",
+            image: '',
+            dotsOptions: {
+                color: '#000000',
+                type: 'square'
+            },
+            backgroundOptions: {
+                color: '#ffffff',
+            },
+            imageOptions: {
+                crossOrigin: 'anonymous',
+                margin: 10,
+                imageSize: 0.4
+            },
+            cornersSquareOptions: {
+              type: "square"
+            },
+            cornersDotOptions: {
+              type: "square"
+            }
+        });
+
+        // --- GENERATOR LOGIC ---
+        function updateQRCode() {
+            const text = textInput.value.trim();
+            const size = parseInt(sizeSlider.value);
+            
+            if (!text) {
+                qrcodeContainer.style.display = 'none';
+                placeholder.style.display = 'flex';
+                placeholder.style.width = `${size}px`;
+                placeholder.style.height = `${size}px`;
+                return;
+            }
+
+            qrcodeContainer.style.display = 'block';
+            placeholder.style.display = 'none';
+
+            qrCode.update({
+                width: size,
+                height: size,
+                data: text,
+                image: centerImage,
+                dotsOptions: {
+                    color: colorPicker.value,
+                    type: dotStyleSelect.value
+                },
+                 cornersSquareOptions: {
+                  type: dotStyleSelect.value === 'dots' || dotStyleSelect.value === 'rounded' ? dotStyleSelect.value : 'square'
+                },
+                cornersDotOptions: {
+                  type: dotStyleSelect.value
+                },
+                imageOptions: {
+                    imageSize: parseFloat(imageSizeSlider.value)
+                }
+            });
+        }
+        
+        function updateSizeDisplay() {
+            sizeValue.textContent = `${sizeSlider.value}px`;
+        }
+
+        // --- DECODER LOGIC ---
+        qrUpload.addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    decodeCanvas.width = img.width;
+                    decodeCanvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                    if (code) {
+                        textInput.value = code.data;
+                        textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        decodeResult.textContent = 'Decoded successfully!';
+                        decodeResult.classList.remove('text-red-500');
+                        decodeResult.classList.add('text-green-600');
+                    } else {
+                        decodeResult.textContent = 'No QR code found in the image.';
+                        decodeResult.classList.add('text-red-500');
+                        decodeResult.classList.remove('text-green-600');
+                    }
+                    qrUpload.value = ''; 
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- EVENT LISTENERS ---
+        [textInput, sizeSlider, colorPicker, dotStyleSelect, imageSizeSlider].forEach(el => {
+            el.addEventListener('input', updateQRCode);
+        });
+        sizeSlider.addEventListener('input', updateSizeDisplay);
+        
+        centerImageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                centerImage = e.target.result;
+                updateQRCode();
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        removeImageBtn.addEventListener('click', () => {
+            centerImage = '';
+            centerImageInput.value = '';
+            updateQRCode();
+        });
+
+        saveBtn.addEventListener('click', () => {
+            if (textInput.value.trim()){
+                qrCode.download({
+                    name: 'qr-code',
+                    extension: fileTypeSelect.value
+                });
+            } else {
+                // You could show a message here that there's nothing to save.
+                // For now, it just does nothing.
+            }
+        });
+
+        // --- INITIALIZATION ---
+        qrCode.append(qrcodeContainer);
+        updateSizeDisplay();
+        updateQRCode(); // Initial call
+    </script>
+</body>
+</html>
+
+
